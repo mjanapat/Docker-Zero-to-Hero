@@ -1,22 +1,31 @@
-FROM ubuntu
+FROM ubuntu:noble
+
+# Avoid interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
 
-COPY requirements.txt /app/
-COPY devops /app/
+# Install required OS packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        python3-venv \
+        apt-utils \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y python3 python3-pip python3-venv
+# Copy app files
+COPY requirements.txt /app
+COPY devops /app/devops
 
-SHELL ["/bin/bash", "-c"]
+# Create and activate virtual environment
+RUN python3 -m venv /app/venv && \
+    /app/venv/bin/pip install --upgrade pip && \
+    /app/venv/bin/pip install -r requirements.txt
 
-RUN python3 -m venv venv1 && \
-source venv1/bin/activate && \
-pip install --no-cache-dir -r requirements.txt
+# Set the path so `python` and `pip` point to the venv
+ENV PATH="/app/venv/bin:$PATH"
 
-EXPOSE 8000
-
-CMD source venv1/bin/activate && python3 manage.py runserver 0.0.0.0:8000
-
-
-
-
+# Run the app
+ENTRYPOINT ["python3"]
+CMD ["devops/manage.py", "runserver", "0.0.0.0:8000"]
